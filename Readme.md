@@ -1,4 +1,4 @@
-#**Behavioral Cloning** 
+# **Behavioral Cloning** 
 
 ---
 The goals / steps of this project are the following:
@@ -9,7 +9,7 @@ The goals / steps of this project are the following:
 * Summarize the results with a written report
 ![alt text](examples/Simulator.png)
 
-###Files Included in this project
+### Files Included in this project
 
 My project includes the following files:  
 * model.py containing the script to create and train the model  
@@ -27,7 +27,7 @@ python drive.py model.h5
 python drive.py model.h5 <dir>  
 ```
 
-###Modeling Step(regression model)
+### Modeling Step(regression model)
 1. Use AWS GPU. Upload data. I first used G2.2, later I opened a g2.8 one, which is super fast, also expensive. By default AWS set the volumn to be 16G, however I encouter out of space issue. I attached a 50G volumn with the same snapshot.  
 ![alt text](examples/aws.png)
 2. Change csv file image directory
@@ -53,9 +53,9 @@ Basiclly I want to train a network when it sees a images from left camera, it wi
 
 
 
-###Model Architecture and Training Strategy
+### Model Architecture and Training Strategy
 
-####1. An appropriate model architecture has been employed
+#### 1. An appropriate model architecture has been employed
 
 There are a few general concepts:  
 * the car should stay in the center of the road as much as possible  
@@ -69,22 +69,22 @@ There are a few general concepts:
 
 The model includes RELU layers to introduce nonlinearity, and the data is normalized in the model using a Keras lambda layer.
 
-####2. Attempts to reduce overfitting in the model
+#### 2. Attempts to reduce overfitting in the model
 
 The model contains 2 dropout layers in order to reduce overfitting. 
 
-####3. Model parameter tuning
+#### 3. Model parameter tuning
 
 The model used an adam optimizer, so the learning rate was not tuned manually.
 
-####4. Appropriate training/validation data
+#### 4. Appropriate training/validation data
 
 Initially I used train_test_split in `sklearn`, I splited from balanced dataset, 80% used for training, 20% for validation. Later I realized for validation, using the original full track's performance makes more sense:  
 1. All the nice images from balance data set could be used in trainig model  
 2. Using same validation data, without randomness, makes the model performance comparable not only within epoches, but also across mutliple models  
 
 Technically, validation set image shouldn't be seen in the training, so people may have a different opinion regarding my approach. For me it works nicely, so I just keep it this way.  
-####5. Use generator
+#### 5. Use generator
 Generator is a new concept I learnt from this project. When working on large dataset, like images. Sometimes simply loading images will exceed the size of memory. Generator allows to process a subset of data once a time, and keep track of last position.
 For training set, the generator use preprocess funtion for training set. For validation set, generator use preprocess function for validation set
 
