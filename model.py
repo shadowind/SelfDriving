@@ -1,7 +1,7 @@
 
 # coding: utf-8
 
-# In[1]:
+# In[2]:
 
 import csv
 import cv2
@@ -27,7 +27,7 @@ import pandas as pd
 # 1. Drive nicely, stay in the center of the road.... most of the time
 # 2. Intentionaly drive towards the side(turn off recording when you are doing this). And **recovery** to center. 
 
-# In[2]:
+# In[13]:
 
 UDACITY_DATA_PATH = '/home/carnd/P3/data1_udacity/data_udacity/'            
 lines = []
@@ -97,7 +97,7 @@ plt.title("Balanced the data based on steering")
 plt.show()
 
 
-# In[14]:
+# In[3]:
 
 balance = []
 with open('driving_log_balanced.csv') as csvfile:
@@ -112,7 +112,7 @@ with open('driving_log_balanced.csv') as csvfile:
 # Also we can see this image has a lot of sky, and car hood. These pixels are noise, not provide useful information, also will increase the computation speed. So I cropped the image to keep only the road part. For visualization purpose, here I just use pixel index to select the area I want.  
 # Later when I intergrate data process and training into a keras model. I will use 2DCropping function in Keras.
 
-# In[20]:
+# In[4]:
 
 i = np.random.randint(len(balance))
 left_img = mpimg.imread(balance[i][1].lstrip())
@@ -132,13 +132,13 @@ ax3.set_title('Right Camera', fontsize=50)
 plt.subplots_adjust(left=0., right=1, top=2, bottom=0.)
 
 
-# In[25]:
+# In[5]:
 
 plt.imshow(center_img[60:140,])
 plt.title("Crop image")
 
 
-# In[26]:
+# In[6]:
 
 resize_img = cv2.resize(center_img[60:140,],(64,64))
 plt.imshow(resize_img)
@@ -152,7 +152,7 @@ plt.title("Resize Image")
 #   
 # For validation data, I don't want to change the image, do any preprocess.
 
-# In[36]:
+# In[7]:
 
 side = True
 flip = True
@@ -187,7 +187,7 @@ def preprocess_image_file_train(line_data):
     return image,y_steer
 
 
-# In[38]:
+# In[8]:
 
 def preprocess_image_file_val(line_data):
     path_file = line_data[0]
@@ -197,7 +197,7 @@ def preprocess_image_file_val(line_data):
     return image,y_steer
 
 
-# In[37]:
+# In[9]:
 
 image,y_steer = preprocess_image_file_train(balance[i])
 image.shape
@@ -211,7 +211,7 @@ print("Y steer:", y_steer)
 # Generator is a new concept I learnt from this project. When working on large dataset, like images. Sometimes simply loading images  will exceed the size of memory. Generator allows to process a subset of data once a time, and keep track of last position.  
 # For training set, the generator use preprocess funtion for training set. For validation set, generator use preprocess function for validation set
 
-# In[13]:
+# In[10]:
 
 def generate_train_from_PD_batch(data,batch_size = 32):
     while 1:
@@ -226,7 +226,7 @@ def generate_train_from_PD_batch(data,batch_size = 32):
         yield np.array(batch_images), np.array(batch_steering)
 
 
-# In[12]:
+# In[11]:
 
 def generate_val_from_PD_batch(data,batch_size = 32):    
     n = len(data)
@@ -260,7 +260,7 @@ def generate_val_from_PD_batch(data,batch_size = 32):
 # print("Training lines:{:02d}; Validation lines:{:02d}".format(len(lines),len(lines_val)))
 
 
-# In[15]:
+# In[14]:
 
 train_generator = generate_train_from_PD_batch(balance, batch_size=32)
 validation_generator = generate_train_from_PD_batch(lines, batch_size=32)
@@ -289,7 +289,7 @@ validation_generator = generate_train_from_PD_batch(lines, batch_size=32)
 # 
 # I use 2 dropout layers to avoid overfitting. 
 
-# In[17]:
+# In[15]:
 
 model = Sequential()
 def myLambda(x):
@@ -300,6 +300,7 @@ def myLambda(x):
 #Theano use differnet format (samples, channels, rows, cols)
 model.add(Cropping2D(cropping=((60,20),(0,0)),input_shape = (160, 320, 3)))
 model.add(Lambda(myLambda))
+model.add(Lambda(lambda x: x/255-0.5))#,input_shape = (64, 64, 3)))
 
 model.add(Convolution2D(16, 3, 3, input_shape=(32, 128, 3), activation='relu'))
 model.add(MaxPooling2D(pool_size=(2, 2)))
@@ -316,21 +317,24 @@ model.add(Dense(20, activation='relu'))
 model.add(Dense(1))
 
 
-# The model was trained using Adam optimiser and mean squared error as a loss function.  I ran 20 epoches, each epoched I use 3838 images for training, total 8034 for validation. Note that the training set is random, so they are not the same images for every ephoch. The validation data is the same. Thus the validation loss is comparable between epochs and different models.
+# The model was trained using Adam optimiser and mean squared error as a loss function.  I ran 20 epoches, each epoched I use 3838 images for training, total 8034 for validation. Note that the training set is random, so they are not the same images for every ephoch. The validation data is the same. Thus the validation loss is comparable between epochs and different models.  
+# 
+# Sometimes the model will overfit if I use too many epoches. Maybe in the middle, an epoch is the best. By looking at the validation loss, I can have a feel how the model improve/overfit over time.  
+# In order to retrive the training weights for each epoch, I add a call back list. To store the weights, I only curious to see the weights when validation loss is decrease. But Keras has the capability to store all the weights.  
 
-# In[19]:
+# In[18]:
 
 model.compile(loss='mse',optimizer='adam')
 
 t0=time.time()
-filepath="Test-{epoch:02d}-val_loss:{val_loss:.4f}-421.h5" # If save each improve sepearte
+filepath="Test-{epoch:02d}-val_loss:{val_loss:.4f}-423.h5" # If save each improve sepearte
 # filepath="best_model.h5" # Only save the best model, by save all the improvements overwirte into same file  
 checkpoint = ModelCheckpoint(filepath, monitor='val_loss', verbose=1, save_best_only=True,mode='min')
 callbacks_list = [checkpoint]
 
-model.fit_generator(train_generator, samples_per_epoch= len(balanced)
+model.fit_generator(train_generator, samples_per_epoch= len(balance)
                     , validation_data= validation_generator,
-                    nb_val_samples= len(df)
+                    nb_val_samples= len(lines)
                     ,callbacks= callbacks_list
                     , nb_epoch=20)
 t1=time.time()
@@ -343,9 +347,9 @@ print("Training completed in " + str(round((t1-t0)/60,2)) + " minutes")
 # Steering 0.15 0.023
 
 
-# In[ ]:
+# In[19]:
 
-# model.save('/home/carnd/P3/model.h5')
+model.save('/home/carnd/P3/model.h5')
 
 
 # ## Additional information:
